@@ -6,33 +6,29 @@ import { signToken } from "../services/auth.js";
 
 // import Matchup, { IMatchup } from '../models/Matchup.js';
 
-// interface Context {
-//   user: {
-//     _id: String;
-//   };
-// }
+interface BookArgs {
+  bookId: string;
+}
+
+interface AddBookArgs {
+  book: {
+    bookId: string;
+    authors: string[];
+    description: string;
+    title: string;
+    image: string;
+    link: string;
+  }
+}
 
 const resolvers = {
   Query: {
     me: async (_parent: any, _args: any, context: any) => {
-      console.log(context.user);
-      // If the user is authenticated, find and return the user's information along with their books
       if (context.user) {
-        return User.findOne({ _id: context.user._id }).populate("books");
+        return User.findOne({ _id: context.user._id }).populate('savedBooks');
       }
-      // If the user is not authenticated, throw an AuthenticationError
       throw new Error("Could not authenticate user.");
     },
-    // tech: async (): Promise<ITech[] | null> => {
-    //   return Tech.find({});
-    // },
-    // matchups: async (
-    //   _parent: any,
-    //   { _id }: { _id: string }
-    // ): Promise<IMatchup[] | null> => {
-    //   const params = _id ? { _id } : {};
-    //   return Matchup.find(params);
-    // },
   },
   Mutation: {
     addUser: async (_parent: any, args: any): Promise<any> => {
@@ -56,17 +52,60 @@ const resolvers = {
       const token = signToken(user.username, user.email, user._id);
       return { token, user };
     },
-    // createVote: async (
-    //   _parent: any,
-    //   { _id, techNum }: { _id: string; techNum: number }
-    // ): Promise<IMatchup | null> => {
-    //   const vote = await Matchup.findOneAndUpdate(
-    //     { _id },
-    //     { $inc: { [`tech${techNum}_votes`]: 1 } },
-    //     { new: true }
-    //   );
-    //   return vote;
-    // },
+
+    saveBook: async (_parent: any, { book }: AddBookArgs, context: any) => {
+      if (context.user) {
+        console.log('Received book data:', book); 
+    
+        try {
+          const updatedUser = await User.findByIdAndUpdate(
+            context.user._id,
+            {
+              $addToSet: { savedBooks: book }, 
+            },
+            { new: true, runValidators: true } 
+          );
+    
+          console.log('Updated user with saved book:', updatedUser); 
+    
+          if (!updatedUser) {
+            throw new Error('User not found');
+          }
+    
+          return updatedUser;
+        } catch (error) {
+          console.error('Error in saveBook mutation:', error);
+          throw new Error('Failed to save the book');
+        }
+      }
+      throw new Error('You need to be logged in!');
+    },
+    
+
+    removeBook: async (_parent: any, { bookId }: BookArgs, context: any) => {
+      if (context.user) {
+        try {
+          const updatedUser = await User.findByIdAndUpdate(
+            context.user._id,
+            { $pull: { savedBooks: { bookId: bookId } } }, 
+            { new: true }
+          );
+    
+          if (!updatedUser) {
+            throw new Error('User not found');
+          }
+    
+          console.log('Updated user after book removal:', updatedUser);
+    
+          return updatedUser;
+        } catch (error) {
+          console.error('Error in removeBook mutation:', error);
+          throw new Error('Failed to remove the book');
+        }
+      }
+      throw new Error('You need to be logged in!');
+    },
+    
   },
 };
 

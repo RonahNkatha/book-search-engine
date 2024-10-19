@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-
-import { createUser } from '../utils/API';
 import Auth from '../utils/auth';
-import type { User } from '../models/User';
+import { useMutation } from '@apollo/client';
+import { ADD_USER } from '../utils/mutations';
 
-// biome-ignore lint/correctness/noEmptyPattern: <explanation>
+
 const SignupForm = ({}: { handleModalClose: () => void }) => {
-  // set initial form state
-  const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
-  // set state for form validation
+  
+  const [userFormData, setUserFormData] = useState({ username: '', email: '', password: ''}); 
   const [validated] = useState(false);
-  // set state for alert
   const [showAlert, setShowAlert] = useState(false);
+  const [addUser] = useMutation(ADD_USER);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -21,42 +19,48 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
   };
 
   const handleFormSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  event.preventDefault();
+  try {
+    console.log('Attempting to add user with data:', userFormData);
+    const { data } = await addUser({
+      variables: {...userFormData}
+    });
+    console.log('Response from addUser mutation:', data);
 
-    // check if form has everything (as per react-bootstrap docs)
-    const form = event.currentTarget;
-    if (form.checkValidity() === false) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-
-    try {
-      const response = await createUser(userFormData);
-
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { token } = await response.json();
-      Auth.login(token);
-    } catch (err) {
-      console.error(err);
+    
+    if (data && data.addUser && data.addUser.token) {
+      Auth.login(data.addUser.token);
+      console.log('Sign up successful');
+    } else {
+      console.error('Unexpected response structure:', data);
       setShowAlert(true);
     }
 
+    
+  } catch (err) {
+    if (err instanceof Error) {
+      console.error('Error details:', err.message);
+      if ('graphQLErrors' in err) {
+        console.error('GraphQL Errors:', err.graphQLErrors);
+      }
+      if ('networkError' in err && err.networkError) {
+        console.error('Network error details:', err.networkError);
+      }
+    }
+    setShowAlert(true);
+  }
+  
+  
     setUserFormData({
       username: '',
       email: '',
       password: '',
-      savedBooks: [],
     });
   };
 
   return (
     <>
-      {/* This is needed for the validation functionality above */}
       <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
-        {/* show alert if server response is bad */}
         <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert} variant='danger'>
           Something went wrong with your signup!
         </Alert>
