@@ -1,5 +1,5 @@
 // import type { Request, Response, NextFunction } from "express";
-import jwt, { JwtPayload } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -14,17 +14,17 @@ export const authenticateToken = async (req: any) => {
   const authHeader = req.headers.authorization;
 
   if (authHeader) {
-    const token = authHeader.split(' ')[1];
-    const secretKey = process.env.JWT_SECRET_KEY || '';
+    const token = authHeader.split(" ")[1];
+    const secretKey = process.env.JWT_SECRET_KEY || "";
 
     try {
-      const decodedUser = jwt.verify(token, secretKey) as JwtPayload;
+      const decodedUser = jwt.verify(token, secretKey);
       return { user: decodedUser }; // Returning user object as part of context
     } catch (err) {
-      console.error('Invalid token');
+      console.error("Invalid token");
     }
   }
-  
+
   return { user: null }; // No user if no valid token
 };
 
