@@ -1,4 +1,5 @@
 import express from "express";
+import { fileURLToPath } from "url";
 import path from "path";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
@@ -9,6 +10,9 @@ import { authenticateToken } from "./services/auth.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
